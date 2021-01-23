@@ -18,27 +18,20 @@ try {
         console.log(err);
     })
 
-    const user = require('./models/user')
-    let testuser = {
-        username : "asaest",
-        name : "test",
-        password : "test"
-    }
-    testuser1 = new user.User(testuser)
-    user.addUser(testuser1, ()=>{
-        user.updateUser("test", testuser, ()=>{
-            console.log("updated")
-        })
-    })
+    const users = require('./routes/users');
 
     app.use(bodyParser.json())
     app.use(cors());
+    app.use(passport.initialize());
+    app.use(passport.session());
+    require('./config/passport')(passport);
 
+    app.use('/users', users);
 
     app.listen(port, ()=>{
         console.log("Server listening at port "+port);
     })
 }
 catch (err) {
-    console.log(err)
+    // console.error(err)
 }

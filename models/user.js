@@ -21,7 +21,26 @@ const userSchema = mongoose.Schema({
     }
 });
 
-const User = new mongoose.model('User', userSchema);
+module.exports.User = User = new mongoose.model('User', userSchema);
+
+module.exports.hashPassword = hashPassword = (password, callback) => {
+    bcrypt.genSalt(10, (err, salt) => {
+        bcrypt.hash (password, salt, (err,hash) => {
+            if(err) {
+                throw(err);
+            }
+            else{
+                callback(hash)
+            }
+        });
+    });    
+}
+
+module.exports.comparePassword = comparePassword = async (passwordHash, candidatePass, callback) => {
+    const match = await bcrypt.compare(candidatePass, passwordHash);
+    callback(match);
+}
+
 
 module.exports.userExists = userExists = (username) => {
     User.findOne({username : username}, (err, user) => {
@@ -39,22 +58,17 @@ module.exports.userExists = userExists = (username) => {
 }
 
 module.exports.addUser = (newUser, callback) => {
-    if(userExists(newUser.username)) {
-        throw new Error("User with "+newUser.username+" already exists.");
-    }
-    else {
-        bcrypt.genSalt(10, (err, salt) => {
-            bcrypt.hash (newUser.password, salt, (err,hash) => {
-                if(err) {
-                    throw(err);
-                }
-                else{
-                    newUser.password = hash;
-                    newUser.save(callback);
-                }
-            });
-        });
-    }
+    getUser(newUser.username, (user) => {
+        if(user) {
+            throw new Error("User already exists");
+        }
+        else {
+            hashPassword(newUser.password, (hash)=>{
+                newUser.password = hash;
+                newUser.save(callback)
+            })
+        }
+    });
 }
 
 module.exports.getUser = getUser = (username, callback) => {
@@ -62,27 +76,28 @@ module.exports.getUser = getUser = (username, callback) => {
         if(err) {
             throw err;
         }
-
-        callback(user);
+        
+        callback(user)
     })
 }
 
-module.exports.updateUser = updateUser = (username, updatedUser, callback) => {
-    if(userExists(username)) {
-        getUser(username, (user) => {
-            User.findOneAndUpdate({_id : user._id}, updatedUser, (err, userUpdated) => {
-                if(err) {
-                    throw err;
-                }
-                
-                userUpdated.save(callback)
-            });
-        })
-    }
-    else {
-        throw new Error("Cannot update user does not exists.")
-    }
-    
+module.exports.updateUser = updateUser = (username, updatedUserData, callback) => {
+    User.findOneAndUpdate({username : username}, updatedUserData, (err, user) => {
+        if (err) {
+            throw err;
+        }
+
+        if(user) {
+            console.log(user);
+            user.save(callback);
+        }
+        else {
+            throw new Error("Failed to update user. User doesnot exist.")
+        }
+    })
 }
 
-module.exports.User = User
+module.exports.deleteUser = deleteUser = (username, callback) => {
+    User.findOneAndDelete({username : username}, callback);
+}
+
